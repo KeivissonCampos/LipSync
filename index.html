@@ -32,7 +32,6 @@
 
         async function speak() {
             const text = document.getElementById("text").value;
-            visemes = [];
 
             const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
             speechConfig.speechSynthesisVoiceName = "pt-BR-AntonioNeural";
@@ -42,38 +41,35 @@
             const audioConfig = SpeechSDK.AudioConfig.fromSpeakerOutput(player);
             const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
 
+            visemes = [];
+            let currentIndex = 0;
+
             synthesizer.visemeReceived = function (s, e) {
                 const visemeId = e.visemeId;
-                const offset = e.audioOffset / 10000000.0; // convert ticks to seconds
+                const offset = e.audioOffset / 10000000.0;
                 visemes.push({ viseme: visemeId, time: offset });
             };
 
-            synthesizer.speakTextAsync(
-                text,
+            player.onAudioStart = () => {
+                // Aguarde ligeiramente para garantir que o áudio realmente começou no celular
+                setTimeout(() => {
+                    audioStartTime = performance.now() / 1000;
+                    startVisemeAnimation();
+                }, 100); // Ajustável: 100-300ms pode ajudar no celular
+            };
+
+            synthesizer.speakTextAsync(text,
                 result => {
-                    if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
-                        console.log("Áudio gerado.");
-                    } else {
-                        console.error("Erro ao sintetizar:", result.errorDetails);
+                    if (result.reason !== SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+                        console.error("Erro:", result.errorDetails);
                     }
                     synthesizer.close();
                 },
                 error => {
-                    console.error(error);
+                    console.error("Erro:", error);
                     synthesizer.close();
                 }
             );
-
-            player.onAudioStart = () => {
-                console.log("Áudio começou a tocar.");
-                audioStartTime = performance.now() / 1000;
-                startVisemeAnimation();
-            };
-
-            player.onAudioEnd = () => {
-                console.log("Áudio finalizado.");
-                clearInterval(animationInterval);
-            };
         }
 
         function startVisemeAnimation() {
