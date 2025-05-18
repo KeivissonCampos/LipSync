@@ -20,7 +20,7 @@
     <input type="text" id="text" placeholder="Digite o texto" size="50">
     <button onclick="speak()">Falar</button>
     <br><br>
-    <img id="mouth" src="viseme_0.png" alt="boca" />
+    <img id="mouth" src="./img/viseme_0.png" alt="boca" />
 
     <script>
         const subscriptionKey = azureConfig.subscriptionKey;
@@ -87,7 +87,8 @@
                 if (currentIndex < visemes.length && elapsed >= visemes[currentIndex].time) {
                     const visemeId = visemes[currentIndex].viseme;
                     console.log(`⌛ ${elapsed.toFixed(2)}s -> Viseme: ${visemeId}`);
-                    mouth.src = `viseme_${visemeId}.png`;
+                    mouth.src = `./img/viseme_${visemeId}.png`;
+
                     currentIndex++;
                 }
 
