@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
@@ -16,22 +16,26 @@
 </head>
 
 <body>
-    <h2>Azure TTS + Lipsync  V1.0</h2>
+    <h2>Azure TTS + Lipsync V4.0</h2>
     <input type="text" id="text" placeholder="Digite o texto" size="50">
     <button onclick="speak()">Falar</button>
     <br><br>
-    <img id="mouth" src="./img/viseme_0.png" alt="boca" />
-
+    <img id="mouth" src="./img/viseme_0.png" alt="boca">
+    
     <script>
         const subscriptionKey = azureConfig.subscriptionKey;
         const serviceRegion = azureConfig.serviceRegion;
 
         let visemes = [];
-        let animationInterval = null;
+        let currentIndex = 0;
         let audioStartTime = 0;
 
         async function speak() {
             const text = document.getElementById("text").value;
+            if (!text) return;
+
+            visemes = [];
+            currentIndex = 0;
 
             const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
             speechConfig.speechSynthesisVoiceName = "pt-BR-AntonioNeural";
@@ -41,57 +45,52 @@
             const audioConfig = SpeechSDK.AudioConfig.fromSpeakerOutput(player);
             const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
 
-            visemes = [];
-            let currentIndex = 0;
-
-            synthesizer.visemeReceived = function (s, e) {
-                const visemeId = e.visemeId;
+            synthesizer.visemeReceived = (s, e) => {
                 const offset = e.audioOffset / 10000000.0;
-                visemes.push({ viseme: visemeId, time: offset });
+                visemes.push({ viseme: e.visemeId, time: offset });
             };
 
             player.onAudioStart = () => {
-                // Aguarde ligeiramente para garantir que o áudio realmente começou no celular
                 setTimeout(() => {
                     audioStartTime = performance.now() / 1000;
-                    startVisemeAnimation();
-                }, 100); // Ajustável: 100-300ms pode ajudar no celular
+                    startAnimation();
+                }, 100); // atraso leve para garantir sincronia
             };
 
-            synthesizer.speakTextAsync(text,
+            synthesizer.speakTextAsync(
+                text,
                 result => {
                     if (result.reason !== SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
-                        console.error("Erro:", result.errorDetails);
+                        console.error("Erro na síntese:", result.errorDetails);
                     }
                     synthesizer.close();
                 },
-                error => {
-                    console.error("Erro:", error);
+                err => {
+                    console.error("Erro:", err);
                     synthesizer.close();
                 }
             );
         }
 
-        function startVisemeAnimation() {
+        function startAnimation() {
             const mouth = document.getElementById("mouth");
-            let currentIndex = 0;
 
-            animationInterval = setInterval(() => {
+            function update() {
+                if (currentIndex >= visemes.length) return;
+
                 const now = performance.now() / 1000;
                 const elapsed = now - audioStartTime;
 
-                if (currentIndex < visemes.length && elapsed >= visemes[currentIndex].time) {
-                    const visemeId = visemes[currentIndex].viseme;
-                    console.log(`⌛ ${elapsed.toFixed(2)}s -> Viseme: ${visemeId}`);
-                    mouth.src = `./img/viseme_${visemeId}.png`;
-
+                const next = visemes[currentIndex];
+                if (elapsed >= next.time) {
+                    mouth.src = `./img/viseme_${next.viseme}.png`;
                     currentIndex++;
                 }
 
-                if (currentIndex >= visemes.length) {
-                    clearInterval(animationInterval);
-                }
-            }, 30);
+                requestAnimationFrame(update);
+            }
+
+            requestAnimationFrame(update);
         }
     </script>
 </body>
