@@ -12,6 +12,7 @@
             border: 1px solid #ccc;
         }
     </style>
+    <script src="config.js"></script>
 </head>
 
 <body>
@@ -22,8 +23,8 @@
     <img id="mouth" src="viseme_0.png" alt="boca" />
 
     <script>
-        const subscriptionKey = '8257bbaf4b954038be73bb155f52f8be';
-        const serviceRegion = 'brazilsouth';
+        const subscriptionKey = azureConfig.subscriptionKey;
+        const serviceRegion = azureConfig.serviceRegion;
 
         let visemes = [];
         let animationInterval = null;
