@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Azure TTS com Lipsync</title>
+    <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+    <style>
+        #mouth {
+            width: 200px;
+            height: 200px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Azure TTS + Lipsync</h2>
+    <input type="text" id="text" placeholder="Digite o texto" size="50">
+    <button onclick="speak()">Falar</button>
+    <br><br>
+    <img id="mouth" src="viseme_0.png" alt="boca" />
+
+    <script>
+        const subscriptionKey = '8257bbaf4b954038be73bb155f52f8be';
+        const serviceRegion = 'brazilsouth';
+
+        let visemes = [];
+        let animationInterval = null;
+        let audioStartTime = 0;
+
+        async function speak() {
+            const text = document.getElementById("text").value;
+            visemes = [];
+
+            const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
+            speechConfig.speechSynthesisVoiceName = "pt-BR-AntonioNeural";
+            speechConfig.setProperty(SpeechSDK.PropertyId.SpeechServiceResponse_RequestViseme, "true");
+
+            const player = new SpeechSDK.SpeakerAudioDestination();
+            const audioConfig = SpeechSDK.AudioConfig.fromSpeakerOutput(player);
+            const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
+
+            synthesizer.visemeReceived = function (s, e) {
+                const visemeId = e.visemeId;
+                const offset = e.audioOffset / 10000000.0; // convert ticks to seconds
+                visemes.push({ viseme: visemeId, time: offset });
+            };
+
+            synthesizer.speakTextAsync(
+                text,
+                result => {
+                    if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+                        console.log("Áudio gerado.");
+                    } else {
+                        console.error("Erro ao sintetizar:", result.errorDetails);
+                    }
+                    synthesizer.close();
+                },
+                error => {
+                    console.error(error);
+                    synthesizer.close();
+                }
+            );
+
+            player.onAudioStart = () => {
+                console.log("Áudio começou a tocar.");
+                audioStartTime = performance.now() / 1000;
+                startVisemeAnimation();
+            };
+
+            player.onAudioEnd = () => {
+                console.log("Áudio finalizado.");
+                clearInterval(animationInterval);
+            };
+        }
+
+        function startVisemeAnimation() {
+            const mouth = document.getElementById("mouth");
+            let currentIndex = 0;
+
+            animationInterval = setInterval(() => {
+                const now = performance.now() / 1000;
+                const elapsed = now - audioStartTime;
+
+                if (currentIndex < visemes.length && elapsed >= visemes[currentIndex].time) {
+                    const visemeId = visemes[currentIndex].viseme;
+                    console.log(`⌛ ${elapsed.toFixed(2)}s -> Viseme: ${visemeId}`);
+                    mouth.src = `viseme_${visemeId}.png`;
+                    currentIndex++;
+                }
+
+                if (currentIndex >= visemes.length) {
+                    clearInterval(animationInterval);
+                }
+            }, 30);
+        }
+    </script>
+</body>
+
+</html>
